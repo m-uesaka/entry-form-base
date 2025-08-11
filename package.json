@@ -1,0 +1,7 @@
+{
+    "name": "entry-form-base",
+    "private": true,
+    "workspaces": [
+        "apps/*"
+    ]
+}
