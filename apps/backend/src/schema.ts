@@ -30,6 +30,8 @@ export const participantsTable = pgTable("participants", {
   isAccepted: boolean("is_accepted").notNull().default(false),
   // データベースにデータが生成された時刻
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  // マイページログイン用パスワード（ハッシュ化済み）
+  passwordHash: text("password_hash").notNull(),
   // データが更新された時刻
   updatedAt: timestamp("updated_at")
     .notNull()
@@ -37,5 +39,19 @@ export const participantsTable = pgTable("participants", {
     .$onUpdate(() => new Date()),
 });
 
+export const staffTable = pgTable("staff", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  // ユーザ名
+  user: text("user").notNull().unique(),
+  // パスワード（ハッシュ化済み）
+  passwordHash: text("password_hash").notNull(),
+  // アカウントを作った日時
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  // スタッフ用ページへの最終アクセス日時
+  accessedAt: timestamp("accessed_at").notNull().defaultNow(),
+});
+
 export type ParticipantInsert = typeof participantsTable.$inferInsert;
 export type ParticipantSelect = typeof participantsTable.$inferSelect;
+export type StaffInsert = typeof staffTable.$inferInsert;
+export type StaffSelect = typeof staffTable.$inferSelect;

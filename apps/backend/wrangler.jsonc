@@ -3,12 +3,13 @@
   "name": "backend",
   "main": "src/index.ts",
   "compatibility_date": "2025-08-11",
-  // "compatibility_flags": [
-  //   "nodejs_compat"
-  // ],
-  // "vars": {
-  //   "MY_VAR": "my-variable"
-  // },
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  // Production environment variables will be set via Cloudflare dashboard or wrangler secret
+  "vars": {
+    "DATABASE_URL": "postgresql://postgres:716DOvJq7AzODkTU@db.hnhqlqvdrwltvcbzknyl.supabase.co:5432/postgres"
+  }
   // "kv_namespaces": [
   //   {
   //     "binding": "MY_KV_NAMESPACE",
