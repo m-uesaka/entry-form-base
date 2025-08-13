@@ -10,22 +10,26 @@
 ### 開発環境
 
 1. 依存関係のインストール：
+
 ```bash
 bun install
 ```
 
 2. ローカルデータベースの起動：
+
 ```bash
 bun run db:start
 ```
 
 3. データベースマイグレーションの実行：
+
 ```bash
 bun run db:generate  # スキーマからマイグレーションファイルを生成
 bun run db:migrate   # マイグレーションを実行
 ```
 
 4. 開発サーバーの起動：
+
 ```bash
 bun run dev
 ```

@@ -171,9 +171,7 @@
         "staff_user_unique": {
           "name": "staff_user_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "user"
-          ]
+          "columns": ["user"]
         }
       },
       "policies": {},
