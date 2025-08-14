@@ -80,3 +80,25 @@ export const PREFECTURES = [
 
 // 都道府県の型
 export type Prefecture = (typeof PREFECTURES)[number];
+
+// APIから取得する参加者データの型
+export interface Participant {
+  id: number;
+  lastNameKanji: string;
+  firstNameKanji: string;
+  lastNameKana: string;
+  firstNameKana: string;
+  email: string;
+  displayName: string | null;
+  prefecture: string | null;
+  freeText: string | null;
+  isCancelled: boolean;
+  isAccepted: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// GET /participants APIレスポンスの型
+export interface ParticipantsResponse {
+  participants: Participant[];
+}

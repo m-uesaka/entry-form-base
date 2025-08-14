@@ -54,6 +54,7 @@ async function submitParticipantForm(
   try {
     // API call
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { confirmPassword, prefectureOther, ...baseData } = data;
 
     // 「その他」が選択されており、prefectureOtherに値がある場合は、そちらを使用
