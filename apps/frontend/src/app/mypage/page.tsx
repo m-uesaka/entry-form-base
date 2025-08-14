@@ -1,39 +1,82 @@
 "use client";
 
-import { useState, useEffect, useActionState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { type Participant, type MyPageFormState, PREFECTURES } from "@/types/form";
-import { updateParticipantAction } from "@/actions/updateParticipant";
+import { useMutation } from "@tanstack/react-query";
+import { client } from "@/utils/client";
+import { type Participant, type UpdateParticipantFormData, PREFECTURES } from "@/types/form";
 
 export default function MyPage() {
   const router = useRouter();
   const [participant, setParticipant] = useState<Participant | null>(null);
+  const [formData, setFormData] = useState<UpdateParticipantFormData>({
+    lastNameKanji: "",
+    firstNameKanji: "",
+    lastNameKana: "",
+    firstNameKana: "",
+    email: "",
+    displayName: "",
+    prefecture: "",
+    prefectureOther: "",
+    freeText: "",
+    isCancelled: false,
+  });
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [submitMessage, setSubmitMessage] = useState<string>("");
 
-  // 初期状態
-  const initialFormState: MyPageFormState = {
-    data: {
-      lastNameKanji: "",
-      firstNameKanji: "",
-      lastNameKana: "",
-      firstNameKana: "",
-      email: "",
-      displayName: "",
-      prefecture: "",
-      prefectureOther: "",
-      freeText: "",
-      isCancelled: false,
+  const mutation = useMutation({
+    mutationFn: async (data: UpdateParticipantFormData & { participantId: number }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { participantId, prefectureOther, ...baseData } = data;
+
+      // 「その他」が選択されており、prefectureOtherに値がある場合は、そちらを使用
+      const submitData = {
+        ...baseData,
+        prefecture:
+          data.prefecture === "その他" && data.prefectureOther
+            ? data.prefectureOther
+            : data.prefecture,
+      };
+
+      try {
+        const response = await (client as any).participants[participantId].$put({
+          json: submitData,
+        });
+        return await response.json();
+      } catch (error) {
+        // フォールバック処理
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
+        const response = await fetch(`${API_URL}/participants/${participantId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(submitData),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText);
+        }
+
+        return await response.json();
+      }
     },
-    isSubmitting: false,
-    errors: {},
-    submitMessage: "",
-    participant: null,
-  };
-
-  // useActionStateを使用
-  const [state, formAction, isPending] = useActionState(
-    updateParticipantAction,
-    initialFormState
-  );
+    onSuccess: (data) => {
+      if (data.success && data.participant) {
+        setSubmitMessage("参加者情報を更新しました");
+        localStorage.setItem("participant", JSON.stringify(data.participant));
+        setParticipant(data.participant);
+        setErrors({});
+      } else {
+        setSubmitMessage(data.message || "更新に失敗しました");
+      }
+    },
+    onError: (error: Error) => {
+      setSubmitMessage(error.message || "更新に失敗しました");
+      setErrors({});
+    },
+  });
 
   // ログイン状態を確認し、参加者情報を読み込み
   useEffect(() => {
@@ -45,6 +88,20 @@ export default function MyPage() {
 
     const parsedParticipant = JSON.parse(savedParticipant) as Participant;
     setParticipant(parsedParticipant);
+    
+    // フォームデータを初期化
+    setFormData({
+      lastNameKanji: parsedParticipant.lastNameKanji,
+      firstNameKanji: parsedParticipant.firstNameKanji,
+      lastNameKana: parsedParticipant.lastNameKana,
+      firstNameKana: parsedParticipant.firstNameKana,
+      email: parsedParticipant.email,
+      displayName: parsedParticipant.displayName || "",
+      prefecture: parsedParticipant.prefecture || "",
+      prefectureOther: "",
+      freeText: parsedParticipant.freeText || "",
+      isCancelled: parsedParticipant.isCancelled,
+    });
   }, [router]);
 
   // ログアウト処理
@@ -53,13 +110,46 @@ export default function MyPage() {
     router.push("/login");
   };
 
-  // 更新成功時にlocalStorageを更新
-  useEffect(() => {
-    if (state.participant && state.submitMessage?.includes("更新しました")) {
-      localStorage.setItem("participant", JSON.stringify(state.participant));
-      setParticipant(state.participant);
+  const handleInputChange = (
+    field: keyof UpdateParticipantFormData,
+    value: string | boolean,
+  ) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+
+    // エラーをクリア
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: "",
+      }));
     }
-  }, [state.participant, state.submitMessage]);
+  };
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    
+    if (!participant) return;
+
+    // バリデーション (簡易版)
+    const newErrors: { [key: string]: string } = {};
+    if (!formData.lastNameKanji.trim()) newErrors.lastNameKanji = "名字（漢字）は必須です";
+    if (!formData.firstNameKanji.trim()) newErrors.firstNameKanji = "名前（漢字）は必須です";
+    if (!formData.lastNameKana.trim()) newErrors.lastNameKana = "名字（ふりがな）は必須です";
+    if (!formData.firstNameKana.trim()) newErrors.firstNameKana = "名前（ふりがな）は必須です";
+    if (!formData.email.trim()) newErrors.email = "メールアドレスは必須です";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setErrors({});
+    setSubmitMessage("");
+    mutation.mutate({ ...formData, participantId: participant.id });
+  };
 
   if (!participant) {
     return (
@@ -100,20 +190,20 @@ export default function MyPage() {
             <h2 className="text-lg font-semibold text-gray-900">参加者情報の変更</h2>
           </div>
           
-          <form action={formAction} className="px-6 py-6 space-y-6">
+          <form onSubmit={handleSubmit} className="px-6 py-6 space-y-6">
             {/* 参加者IDを隠しフィールドで送信 */}
             <input type="hidden" name="participantId" value={participant.id} />
             
-            {state.submitMessage && (
+            {submitMessage && (
               <div className={`p-4 rounded-md ${
-                state.submitMessage.includes("更新しました") 
+                submitMessage.includes("更新しました") 
                   ? "bg-green-50 border border-green-200" 
                   : "bg-red-50 border border-red-200"
               }`}>
                 <p className={`text-sm ${
-                  state.submitMessage.includes("更新しました") ? "text-green-700" : "text-red-700"
+                  submitMessage.includes("更新しました") ? "text-green-700" : "text-red-700"
                 }`}>
-                  {state.submitMessage}
+                  {submitMessage}
                 </p>
               </div>
             )}
@@ -128,13 +218,14 @@ export default function MyPage() {
                   type="text"
                   name="lastNameKanji"
                   id="lastNameKanji"
-                  defaultValue={participant.lastNameKanji}
+                  value={formData.lastNameKanji}
+                  onChange={(e) => handleInputChange("lastNameKanji", e.target.value)}
                   className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-                    state.errors.lastNameKanji ? "border-red-300" : "border-gray-300"
+                    errors.lastNameKanji ? "border-red-300" : "border-gray-300"
                   }`}
                 />
-                {state.errors.lastNameKanji && (
-                  <p className="mt-1 text-sm text-red-600">{state.errors.lastNameKanji}</p>
+                {errors.lastNameKanji && (
+                  <p className="mt-1 text-sm text-red-600">{errors.lastNameKanji}</p>
                 )}
               </div>
 
@@ -147,13 +238,14 @@ export default function MyPage() {
                   type="text"
                   name="firstNameKanji"
                   id="firstNameKanji"
-                  defaultValue={participant.firstNameKanji}
+                  value={formData.firstNameKanji}
+                  onChange={(e) => handleInputChange("firstNameKanji", e.target.value)}
                   className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-                    state.errors.firstNameKanji ? "border-red-300" : "border-gray-300"
+                    errors.firstNameKanji ? "border-red-300" : "border-gray-300"
                   }`}
                 />
-                {state.errors.firstNameKanji && (
-                  <p className="mt-1 text-sm text-red-600">{state.errors.firstNameKanji}</p>
+                {errors.firstNameKanji && (
+                  <p className="mt-1 text-sm text-red-600">{errors.firstNameKanji}</p>
                 )}
               </div>
 
@@ -166,14 +258,15 @@ export default function MyPage() {
                   type="text"
                   name="lastNameKana"
                   id="lastNameKana"
-                  defaultValue={participant.lastNameKana}
+                  value={formData.lastNameKana}
+                  onChange={(e) => handleInputChange("lastNameKana", e.target.value)}
                   className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-                    state.errors.lastNameKana ? "border-red-300" : "border-gray-300"
+                    errors.lastNameKana ? "border-red-300" : "border-gray-300"
                   }`}
                   placeholder="やまだ"
                 />
-                {state.errors.lastNameKana && (
-                  <p className="mt-1 text-sm text-red-600">{state.errors.lastNameKana}</p>
+                {errors.lastNameKana && (
+                  <p className="mt-1 text-sm text-red-600">{errors.lastNameKana}</p>
                 )}
               </div>
 
@@ -186,14 +279,15 @@ export default function MyPage() {
                   type="text"
                   name="firstNameKana"
                   id="firstNameKana"
-                  defaultValue={participant.firstNameKana}
+                  value={formData.firstNameKana}
+                  onChange={(e) => handleInputChange("firstNameKana", e.target.value)}
                   className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-                    state.errors.firstNameKana ? "border-red-300" : "border-gray-300"
+                    errors.firstNameKana ? "border-red-300" : "border-gray-300"
                   }`}
                   placeholder="たろう"
                 />
-                {state.errors.firstNameKana && (
-                  <p className="mt-1 text-sm text-red-600">{state.errors.firstNameKana}</p>
+                {errors.firstNameKana && (
+                  <p className="mt-1 text-sm text-red-600">{errors.firstNameKana}</p>
                 )}
               </div>
             </div>
@@ -207,14 +301,15 @@ export default function MyPage() {
                 type="email"
                 name="email"
                 id="email"
-                defaultValue={participant.email}
+                value={formData.email}
+                onChange={(e) => handleInputChange("email", e.target.value)}
                 className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-                  state.errors.email ? "border-red-300" : "border-gray-300"
+                  errors.email ? "border-red-300" : "border-gray-300"
                 }`}
                 placeholder="example@email.com"
               />
-              {state.errors.email && (
-                <p className="mt-1 text-sm text-red-600">{state.errors.email}</p>
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
               )}
             </div>
 
@@ -227,7 +322,8 @@ export default function MyPage() {
                 type="text"
                 name="displayName"
                 id="displayName"
-                defaultValue={participant.displayName || ""}
+                value={formData.displayName}
+                onChange={(e) => handleInputChange("displayName", e.target.value)}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 placeholder="表示名を入力（空白の場合は氏名が表示されます）"
               />
@@ -241,7 +337,8 @@ export default function MyPage() {
               <select
                 name="prefecture"
                 id="prefecture"
-                defaultValue={participant.prefecture || ""}
+                value={formData.prefecture}
+                onChange={(e) => handleInputChange("prefecture", e.target.value)}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               >
                 <option value="">選択してください</option>
@@ -262,14 +359,15 @@ export default function MyPage() {
                 type="text"
                 name="prefectureOther"
                 id="prefectureOther"
-                defaultValue=""
+                value={formData.prefectureOther}
+                onChange={(e) => handleInputChange("prefectureOther", e.target.value)}
                 className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-                  state.errors.prefectureOther ? "border-red-300" : "border-gray-300"
+                  errors.prefectureOther ? "border-red-300" : "border-gray-300"
                 }`}
                 placeholder="都道府県名を入力してください"
               />
-              {state.errors.prefectureOther && (
-                <p className="mt-1 text-sm text-red-600">{state.errors.prefectureOther}</p>
+              {errors.prefectureOther && (
+                <p className="mt-1 text-sm text-red-600">{errors.prefectureOther}</p>
               )}
             </div>
 
@@ -282,7 +380,8 @@ export default function MyPage() {
                 name="freeText"
                 id="freeText"
                 rows={4}
-                defaultValue={participant.freeText || ""}
+                value={formData.freeText}
+                onChange={(e) => handleInputChange("freeText", e.target.value)}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 placeholder="ご質問やご要望などがありましたらご記入ください"
               />
@@ -296,7 +395,8 @@ export default function MyPage() {
                     id="isCancelled"
                     name="isCancelled"
                     type="checkbox"
-                    defaultChecked={participant.isCancelled}
+                    checked={formData.isCancelled}
+                    onChange={(e) => handleInputChange("isCancelled", e.target.checked)}
                     className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
                   />
                 </div>
@@ -315,10 +415,10 @@ export default function MyPage() {
             <div className="pt-6">
               <button
                 type="submit"
-                disabled={isPending}
+                disabled={mutation.isPending}
                 className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed`}
               >
-                {isPending ? "更新中..." : "参加者情報を更新"}
+                {mutation.isPending ? "更新中..." : "参加者情報を更新"}
               </button>
             </div>
           </form>

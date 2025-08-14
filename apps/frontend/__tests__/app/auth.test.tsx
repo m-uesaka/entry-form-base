@@ -153,49 +153,50 @@ describe('マイページ', () => {
       const content = fs.readFileSync(myPagePath, 'utf-8')
 
       expect(content).toContain('Participant')
-      expect(content).toContain('MyPageFormState')
+      expect(content).toContain('UpdateParticipantFormData')
       expect(content).toContain('PREFECTURES')
     })
   })
 
-  describe('useActionState統合', () => {
-    it('useActionStateがインポートされていること', () => {
+  describe('React Query統合', () => {
+    it('useMutationがインポートされていること', () => {
       const fs = require('fs')
       const path = require('path')
       const myPagePath = path.join(__dirname, '../../src/app/mypage/page.tsx')
       const content = fs.readFileSync(myPagePath, 'utf-8')
 
-      expect(content).toContain('useActionState')
+      expect(content).toContain('useMutation')
+      expect(content).toContain('@tanstack/react-query')
     })
 
-    it('updateParticipantActionがインポートされていること', () => {
+    it('clientがインポートされていること', () => {
       const fs = require('fs')
       const path = require('path')
       const myPagePath = path.join(__dirname, '../../src/app/mypage/page.tsx')
       const content = fs.readFileSync(myPagePath, 'utf-8')
 
-      expect(content).toContain('updateParticipantAction')
-      expect(content).toContain('@/actions/updateParticipant')
+      expect(content).toContain('client')
+      expect(content).toContain('@/utils/client')
     })
 
-    it('initialFormStateが定義されていること', () => {
+    it('mutationが定義されていること', () => {
       const fs = require('fs')
       const path = require('path')
       const myPagePath = path.join(__dirname, '../../src/app/mypage/page.tsx')
       const content = fs.readFileSync(myPagePath, 'utf-8')
 
-      expect(content).toContain('initialFormState')
-      expect(content).toContain('MyPageFormState')
+      expect(content).toContain('mutation')
+      expect(content).toContain('mutationFn')
     })
 
-    it('formActionとisPendingが使用されていること', () => {
+    it('onSuccessとonErrorハンドラーが含まれていること', () => {
       const fs = require('fs')
       const path = require('path')
       const myPagePath = path.join(__dirname, '../../src/app/mypage/page.tsx')
       const content = fs.readFileSync(myPagePath, 'utf-8')
 
-      expect(content).toContain('formAction')
-      expect(content).toContain('isPending')
+      expect(content).toContain('onSuccess')
+      expect(content).toContain('onError')
     })
   })
 
@@ -269,23 +270,24 @@ describe('マイページ', () => {
   })
 
   describe('フォーム送信', () => {
-    it('form actionが正しく設定されていること', () => {
+    it('form onSubmitが正しく設定されていること', () => {
       const fs = require('fs')
       const path = require('path')
       const myPagePath = path.join(__dirname, '../../src/app/mypage/page.tsx')
       const content = fs.readFileSync(myPagePath, 'utf-8')
 
-      expect(content).toContain('action={formAction}')
+      expect(content).toContain('onSubmit={handleSubmit}')
+      expect(content).toContain('handleSubmit')
     })
 
-    it('defaultValueが使用されていること', () => {
+    it('value/checkedが制御コンポーネントで使用されていること', () => {
       const fs = require('fs')
       const path = require('path')
       const myPagePath = path.join(__dirname, '../../src/app/mypage/page.tsx')
       const content = fs.readFileSync(myPagePath, 'utf-8')
 
-      expect(content).toContain('defaultValue={participant.')
-      expect(content).toContain('defaultChecked={participant.')
+      expect(content).toContain('value={formData.')
+      expect(content).toContain('checked={formData.')
     })
   })
 
@@ -310,24 +312,24 @@ describe('マイページ', () => {
       expect(content).toContain('type="submit"')
     })
 
-    it('isPendingが使用されていること', () => {
+    it('mutation.isPendingが使用されていること', () => {
       const fs = require('fs')
       const path = require('path')
       const myPagePath = path.join(__dirname, '../../src/app/mypage/page.tsx')
       const content = fs.readFileSync(myPagePath, 'utf-8')
 
-      expect(content).toContain('disabled={isPending}')
+      expect(content).toContain('mutation.isPending')
       expect(content).toContain('更新中...')
     })
 
-    it('state.errorsとstate.submitMessageが使用されていること', () => {
+    it('errorsとsubmitMessageが使用されていること', () => {
       const fs = require('fs')
       const path = require('path')
       const myPagePath = path.join(__dirname, '../../src/app/mypage/page.tsx')
       const content = fs.readFileSync(myPagePath, 'utf-8')
 
-      expect(content).toContain('state.errors')
-      expect(content).toContain('state.submitMessage')
+      expect(content).toContain('errors.')
+      expect(content).toContain('submitMessage')
     })
   })
 
@@ -363,17 +365,17 @@ describe('マイページ', () => {
       const content = fs.readFileSync(myPagePath, 'utf-8')
 
       expect(content).toContain('localStorage.setItem')
-      expect(content).toContain('state.participant')
+      expect(content).toContain('onSuccess')
     })
 
-    it('useEffectでlocalStorage更新が実行されること', () => {
+    it('onSuccessでlocalStorage更新が実行されること', () => {
       const fs = require('fs')
       const path = require('path')
       const myPagePath = path.join(__dirname, '../../src/app/mypage/page.tsx')
       const content = fs.readFileSync(myPagePath, 'utf-8')
 
-      const useEffectMatch = content.match(/useEffect\([^}]+localStorage\.setItem[^}]+\}/)
-      expect(useEffectMatch).toBeTruthy()
+      expect(content).toContain('onSuccess:')
+      expect(content).toContain('localStorage.setItem')
     })
   })
 })

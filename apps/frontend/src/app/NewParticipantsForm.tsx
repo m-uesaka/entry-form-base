@@ -1,6 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { client } from "@/utils/client";
 import { validateParticipantForm, validateField } from "@/utils/validation";
 import { NewParticipantFormData, FormState, PREFECTURES } from "@/types/form";
 
@@ -22,91 +24,99 @@ const initialState: FormState = {
   isSubmitting: false,
 };
 
-async function submitParticipantForm(
-  prevState: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const data: NewParticipantFormData = {
-    lastNameKanji: (formData.get("lastNameKanji") as string) || "",
-    firstNameKanji: (formData.get("firstNameKanji") as string) || "",
-    lastNameKana: (formData.get("lastNameKana") as string) || "",
-    firstNameKana: (formData.get("firstNameKana") as string) || "",
-    email: (formData.get("email") as string) || "",
-    displayName: (formData.get("displayName") as string) || "",
-    prefecture: (formData.get("prefecture") as string) || "",
-    prefectureOther: (formData.get("prefectureOther") as string) || "",
-    freeText: (formData.get("freeText") as string) || "",
-    password: (formData.get("password") as string) || "",
-    confirmPassword: (formData.get("confirmPassword") as string) || "",
-  };
+export default function NewParticipantsForm() {
+  const [state, setState] = useState<FormState>(initialState);
 
-  // Validation
-  const errors = validateParticipantForm(data);
+  const mutation = useMutation({
+    mutationFn: async (data: NewParticipantFormData) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { confirmPassword, prefectureOther, ...baseData } = data;
 
-  if (Object.keys(errors).length > 0) {
-    return {
-      data,
-      errors,
-      isSubmitting: false,
-    };
-  }
+      // 「その他」が選択されており、prefectureOtherに値がある場合は、そちらを使用
+      const submitData = {
+        ...baseData,
+        prefecture:
+          data.prefecture === "その他" && data.prefectureOther
+            ? data.prefectureOther
+            : data.prefecture,
+      };
 
-  try {
-    // API call
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { confirmPassword, prefectureOther, ...baseData } = data;
+      try {
+        const response = await (client as any).participants.$post({
+          json: submitData,
+        });
+        return await response.json();
+      } catch (error) {
+        // フォールバック処理
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
+        const response = await fetch(`${API_URL}/participants`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(submitData),
+        });
 
-    // 「その他」が選択されており、prefectureOtherに値がある場合は、そちらを使用
-    const submitData = {
-      ...baseData,
-      prefecture:
-        data.prefecture === "その他" && data.prefectureOther
-          ? data.prefectureOther
-          : data.prefecture,
-    };
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText);
+        }
 
-    const response = await fetch(`${API_URL}/participants`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(submitData),
-    });
+        return await response.json();
+      }
+    },
+    onSuccess: () => {
+      setState({
+        data: initialState.data,
+        errors: {},
+        isSubmitting: false,
+        submitMessage: "参加者登録が完了しました！",
+      });
+    },
+    onError: (error: Error) => {
+      setState(prev => ({
+        ...prev,
+        errors: {
+          ...prev.errors,
+          submit: error.message || "登録に失敗しました",
+        },
+        isSubmitting: false,
+      }));
+    },
+  });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText);
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    
+    // バリデーション
+    const errors = validateParticipantForm(state.data);
+
+    if (Object.keys(errors).length > 0) {
+      setState(prev => ({
+        ...prev,
+        errors,
+        isSubmitting: false,
+      }));
+      return;
     }
 
-    // Success - reset form
-    return {
-      data: initialState.data,
-      errors: {},
-      isSubmitting: false,
-      submitMessage: "参加者登録が完了しました！",
-    };
-  } catch (error) {
-    return {
-      data,
-      errors: {
-        submit: error instanceof Error ? error.message : "登録に失敗しました",
-      },
-      isSubmitting: false,
-    };
-  }
-}
-
-export default function NewParticipantsForm() {
-  const [state, submitAction, isPending] = useActionState(
-    submitParticipantForm,
-    initialState,
-  );
+    setState(prev => ({ ...prev, isSubmitting: true, errors: {} }));
+    mutation.mutate(state.data);
+  };
 
   const handleInputChange = (
     field: keyof NewParticipantFormData,
     value: string,
   ) => {
+    // フォームデータを更新
+    setState(prev => ({
+      ...prev,
+      data: {
+        ...prev.data,
+        [field]: value,
+      },
+    }));
+
     // Field-level validation on change
     const fieldError = validateField(field, value, {
       ...state.data,
@@ -115,7 +125,13 @@ export default function NewParticipantsForm() {
 
     // Clear field error if validation passes
     if (!fieldError && state.errors[field]) {
-      // This will be handled by the next action state update
+      setState(prev => ({
+        ...prev,
+        errors: {
+          ...prev.errors,
+          [field]: "",
+        },
+      }));
     }
   };
 
@@ -129,7 +145,7 @@ export default function NewParticipantsForm() {
         </div>
       )}
 
-      <form action={submitAction} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* Name fields */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -143,7 +159,7 @@ export default function NewParticipantsForm() {
               type="text"
               id="lastNameKanji"
               name="lastNameKanji"
-              defaultValue={state.data.lastNameKanji}
+              value={state.data.lastNameKanji}
               onChange={(e) =>
                 handleInputChange("lastNameKanji", e.target.value)
               }
@@ -172,7 +188,7 @@ export default function NewParticipantsForm() {
               type="text"
               id="firstNameKanji"
               name="firstNameKanji"
-              defaultValue={state.data.firstNameKanji}
+              value={state.data.firstNameKanji}
               onChange={(e) =>
                 handleInputChange("firstNameKanji", e.target.value)
               }
@@ -204,7 +220,7 @@ export default function NewParticipantsForm() {
               type="text"
               id="lastNameKana"
               name="lastNameKana"
-              defaultValue={state.data.lastNameKana}
+              value={state.data.lastNameKana}
               onChange={(e) =>
                 handleInputChange("lastNameKana", e.target.value)
               }
@@ -231,7 +247,7 @@ export default function NewParticipantsForm() {
               type="text"
               id="firstNameKana"
               name="firstNameKana"
-              defaultValue={state.data.firstNameKana}
+              value={state.data.firstNameKana}
               onChange={(e) =>
                 handleInputChange("firstNameKana", e.target.value)
               }
@@ -262,7 +278,7 @@ export default function NewParticipantsForm() {
             type="email"
             id="email"
             name="email"
-            defaultValue={state.data.email}
+            value={state.data.email}
             onChange={(e) => handleInputChange("email", e.target.value)}
             className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
               state.errors.email ? "border-red-500" : "border-gray-300"
@@ -286,7 +302,7 @@ export default function NewParticipantsForm() {
             type="text"
             id="displayName"
             name="displayName"
-            defaultValue={state.data.displayName}
+            value={state.data.displayName}
             onChange={(e) => handleInputChange("displayName", e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="タロウ"
@@ -307,7 +323,8 @@ export default function NewParticipantsForm() {
           <select
             id="prefecture"
             name="prefecture"
-            defaultValue={state.data.prefecture}
+            value={state.data.prefecture}
+            onChange={(e) => handleInputChange("prefecture", e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">選択してください</option>
@@ -331,7 +348,7 @@ export default function NewParticipantsForm() {
             type="text"
             id="prefectureOther"
             name="prefectureOther"
-            defaultValue={state.data.prefectureOther}
+            value={state.data.prefectureOther}
             onChange={(e) =>
               handleInputChange("prefectureOther", e.target.value)
             }
@@ -351,7 +368,7 @@ export default function NewParticipantsForm() {
           <textarea
             id="freeText"
             name="freeText"
-            defaultValue={state.data.freeText}
+            value={state.data.freeText}
             onChange={(e) => handleInputChange("freeText", e.target.value)}
             rows={4}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -372,7 +389,7 @@ export default function NewParticipantsForm() {
               type="password"
               id="password"
               name="password"
-              defaultValue={state.data.password}
+              value={state.data.password}
               onChange={(e) => handleInputChange("password", e.target.value)}
               className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 state.errors.password ? "border-red-500" : "border-gray-300"
@@ -400,7 +417,7 @@ export default function NewParticipantsForm() {
               type="password"
               id="confirmPassword"
               name="confirmPassword"
-              defaultValue={state.data.confirmPassword}
+              value={state.data.confirmPassword}
               onChange={(e) =>
                 handleInputChange("confirmPassword", e.target.value)
               }
@@ -429,14 +446,14 @@ export default function NewParticipantsForm() {
 
           <button
             type="submit"
-            disabled={isPending}
+            disabled={state.isSubmitting || mutation.isPending}
             className={`w-full py-3 px-4 rounded-md text-white font-medium ${
-              isPending
+              state.isSubmitting || mutation.isPending
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             }`}
           >
-            {isPending ? "登録中..." : "参加者登録"}
+            {state.isSubmitting || mutation.isPending ? "登録中..." : "参加者登録"}
           </button>
         </div>
       </form>

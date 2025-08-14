@@ -21,7 +21,7 @@ describe("NewParticipantsForm", () => {
       expect(content).toContain("use client");
     });
 
-    it("useActionStateが使用されていること", async () => {
+    it("useStateとuseMutationが使用されていること", async () => {
       const fs = require("fs");
       const path = require("path");
       const formPath = path.join(
@@ -30,8 +30,9 @@ describe("NewParticipantsForm", () => {
       );
       const content = fs.readFileSync(formPath, "utf-8");
 
-      expect(content).toContain("useActionState");
-      expect(content).toContain("react");
+      expect(content).toContain("useState");
+      expect(content).toContain("useMutation");
+      expect(content).toContain("@tanstack/react-query");
     });
   });
 
@@ -114,7 +115,7 @@ describe("NewParticipantsForm", () => {
   });
 
   describe("フォーム送信機能", () => {
-    it("submitParticipantForm関数が定義されていること", async () => {
+    it("mutationが定義されていること", async () => {
       const fs = require("fs");
       const path = require("path");
       const formPath = path.join(
@@ -123,11 +124,38 @@ describe("NewParticipantsForm", () => {
       );
       const content = fs.readFileSync(formPath, "utf-8");
 
-      expect(content).toContain("submitParticipantForm");
-      expect(content).toContain("async function");
+      expect(content).toContain("mutation");
+      expect(content).toContain("useMutation");
+    });
+
+    it("clientがインポートされていること", async () => {
+      const fs = require("fs");
+      const path = require("path");
+      const formPath = path.join(
+        __dirname,
+        "../../src/app/NewParticipantsForm.tsx",
+      );
+      const content = fs.readFileSync(formPath, "utf-8");
+
+      expect(content).toContain("client");
+      expect(content).toContain("@/utils/client");
     });
 
     it("API呼び出し機能が含まれていること", async () => {
+      const fs = require("fs");
+      const path = require("path");
+      const formPath = path.join(
+        __dirname,
+        "../../src/app/NewParticipantsForm.tsx",
+      );
+      const content = fs.readFileSync(formPath, "utf-8");
+
+      expect(content).toContain("(client as any)");
+      expect(content).toContain("participants");
+      expect(content).toContain("$post");
+    });
+
+    it("フォールバック処理が含まれていること", async () => {
       const fs = require("fs");
       const path = require("path");
       const formPath = path.join(
@@ -150,7 +178,7 @@ describe("NewParticipantsForm", () => {
       );
       const content = fs.readFileSync(formPath, "utf-8");
 
-      expect(content).toContain("isPending");
+      expect(content).toContain("mutation.isPending");
       expect(content).toContain("isSubmitting");
       expect(content).toContain("登録中...");
     });
@@ -227,6 +255,7 @@ describe("NewParticipantsForm", () => {
       const content = fs.readFileSync(formPath, "utf-8");
 
       expect(content).toContain("handleInputChange");
+      expect(content).toContain("handleSubmit");
       expect(content).toContain("onChange");
     });
   });
@@ -242,6 +271,7 @@ describe("NewParticipantsForm", () => {
       const content = fs.readFileSync(formPath, "utf-8");
 
       expect(content).toContain("submitMessage");
+      expect(content).toContain("onSuccess");
       expect(content).toContain("参加者登録が完了しました");
     });
 
@@ -255,7 +285,36 @@ describe("NewParticipantsForm", () => {
       const content = fs.readFileSync(formPath, "utf-8");
 
       expect(content).toContain("errors.submit");
+      expect(content).toContain("onError");
       expect(content).toContain("bg-red-100");
+    });
+  });
+
+  describe("React Query統合", () => {
+    it("mutationFnが定義されていること", async () => {
+      const fs = require("fs");
+      const path = require("path");
+      const formPath = path.join(
+        __dirname,
+        "../../src/app/NewParticipantsForm.tsx",
+      );
+      const content = fs.readFileSync(formPath, "utf-8");
+
+      expect(content).toContain("mutationFn:");
+      expect(content).toContain("async");
+    });
+
+    it("onSuccessとonErrorハンドラーが含まれていること", async () => {
+      const fs = require("fs");
+      const path = require("path");
+      const formPath = path.join(
+        __dirname,
+        "../../src/app/NewParticipantsForm.tsx",
+      );
+      const content = fs.readFileSync(formPath, "utf-8");
+
+      expect(content).toContain("onSuccess:");
+      expect(content).toContain("onError:");
     });
   });
 });
