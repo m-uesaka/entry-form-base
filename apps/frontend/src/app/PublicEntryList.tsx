@@ -11,7 +11,7 @@ export default function PublicEntryList() {
       // Honoクライアントを使用してデータを取得
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const response = await (client as any).participants.$get();
-      
+
       if (!response.ok) {
         throw new Error("参加者データの取得に失敗しました");
       }
@@ -19,9 +19,10 @@ export default function PublicEntryList() {
       return response.json();
     } catch {
       // フォールバック: 直接fetchを使用
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
+      const API_URL =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
       const response = await fetch(`${API_URL}/participants`);
-      
+
       if (!response.ok) {
         throw new Error("参加者データの取得に失敗しました");
       }
@@ -44,7 +45,7 @@ export default function PublicEntryList() {
 
   // キャンセルしていない参加者数を計算
   const activeParticipantCount = participants.filter(
-    (participant) => !participant.isCancelled
+    (participant) => !participant.isCancelled,
   ).length;
 
   // 表示名を取得する関数
@@ -52,8 +53,10 @@ export default function PublicEntryList() {
     if (participant.isCancelled) {
       return "＜キャンセル＞";
     }
-    return participant.displayName || 
-           `${participant.lastNameKanji} ${participant.firstNameKanji}`;
+    return (
+      participant.displayName ||
+      `${participant.lastNameKanji} ${participant.firstNameKanji}`
+    );
   };
 
   // 在住地を取得する関数
@@ -87,11 +90,12 @@ export default function PublicEntryList() {
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md">
       <h2 className="text-2xl font-bold text-gray-900 mb-6">参加者一覧</h2>
-      
+
       {/* 参加者数表示 */}
       <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <p className="text-lg font-semibold text-blue-800">
-          現在の参加者数: <span className="text-2xl">{activeParticipantCount}</span>名
+          現在の参加者数:{" "}
+          <span className="text-2xl">{activeParticipantCount}</span>名
         </p>
         <p className="text-sm text-blue-600 mt-1">
           （キャンセルされた方は除く）
@@ -124,22 +128,24 @@ export default function PublicEntryList() {
                 <tr
                   key={participant.id}
                   className={`hover:bg-gray-50 ${
-                    participant.isCancelled 
-                      ? "bg-gray-100 text-gray-500" 
-                      : ""
+                    participant.isCancelled ? "bg-gray-100 text-gray-500" : ""
                   }`}
                 >
                   <td className="border border-gray-300 px-4 py-3 font-mono text-sm">
                     {participant.id}
                   </td>
-                  <td className={`border border-gray-300 px-4 py-3 ${
-                    participant.isCancelled ? "italic" : ""
-                  }`}>
+                  <td
+                    className={`border border-gray-300 px-4 py-3 ${
+                      participant.isCancelled ? "italic" : ""
+                    }`}
+                  >
                     {getDisplayName(participant)}
                   </td>
-                  <td className={`border border-gray-300 px-4 py-3 ${
-                    participant.isCancelled ? "italic" : ""
-                  }`}>
+                  <td
+                    className={`border border-gray-300 px-4 py-3 ${
+                      participant.isCancelled ? "italic" : ""
+                    }`}
+                  >
                     {getPrefecture(participant)}
                   </td>
                 </tr>

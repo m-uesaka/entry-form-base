@@ -102,3 +102,46 @@ export interface Participant {
 export interface ParticipantsResponse {
   participants: Participant[];
 }
+
+// ログインフォームの型
+export interface LoginFormData {
+  email: string;
+  password: string;
+}
+
+// ログインレスポンスの型
+export interface LoginResponse {
+  success: boolean;
+  participant?: Participant;
+  message?: string;
+}
+
+// 参加者情報更新フォームの型
+export interface UpdateParticipantFormData {
+  lastNameKanji: string;
+  firstNameKanji: string;
+  lastNameKana: string;
+  firstNameKana: string;
+  email: string;
+  displayName?: string;
+  prefecture?: string;
+  prefectureOther?: string;
+  freeText?: string;
+  isCancelled: boolean;
+}
+
+// 参加者情報更新レスポンスの型
+export interface UpdateParticipantResponse {
+  success: boolean;
+  participant?: Participant;
+  message?: string;
+}
+
+// マイページ用のフォーム状態の型
+export interface MyPageFormState {
+  data: UpdateParticipantFormData;
+  errors: FormErrors;
+  isSubmitting: boolean;
+  submitMessage?: string;
+  participant?: Participant | null;
+}

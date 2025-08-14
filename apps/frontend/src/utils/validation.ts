@@ -89,3 +89,14 @@ export const validateField = (
   }
   return null;
 };
+
+// 単独でメールアドレスをバリデーションする関数
+export const validateEmail = (email: string): string | null => {
+  if (!email.trim()) {
+    return "メールアドレスは必須です";
+  }
+  if (!/\S+@\S+\.\S+/.test(email)) {
+    return "有効なメールアドレスを入力してください";
+  }
+  return null;
+};
