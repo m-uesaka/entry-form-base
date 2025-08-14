@@ -13,7 +13,7 @@ export default function ParticipantsPage() {
             ← 参加者登録に戻る
           </Link>
         </div>
-        
+
         <PublicEntryList />
       </div>
     </div>

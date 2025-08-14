@@ -1,4 +1,4 @@
-// 新規参加者登録フォームのデータ型
+// 新規参加者登録フォームのデータ型（フォーム専用フィールドを含む）
 export interface NewParticipantFormData {
   lastNameKanji: string;
   firstNameKanji: string;
@@ -7,10 +7,10 @@ export interface NewParticipantFormData {
   email: string;
   displayName?: string;
   prefecture?: string;
-  prefectureOther?: string;
+  prefectureOther?: string; // フォーム専用フィールド
   freeText?: string;
   password: string;
-  confirmPassword: string;
+  confirmPassword: string; // フォーム専用フィールド
 }
 
 // フォームエラーの型

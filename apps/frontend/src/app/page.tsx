@@ -12,7 +12,7 @@ export default function Home() {
           <p className="text-lg text-gray-600">
             こちらから新規参加者の登録を行うことができます
           </p>
-          
+
           {/* ナビゲーションリンク */}
           <div className="mt-6 flex flex-wrap justify-center gap-4">
             <Link

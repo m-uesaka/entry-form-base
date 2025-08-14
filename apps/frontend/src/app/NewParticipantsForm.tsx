@@ -5,6 +5,7 @@ import { useMutation } from "@tanstack/react-query";
 import { client } from "@/utils/client";
 import { validateParticipantForm, validateField } from "@/utils/validation";
 import { NewParticipantFormData, FormState, PREFECTURES } from "@/types/form";
+import { ParticipantCreateData } from "backend/src/index";
 
 const initialState: FormState = {
   data: {
@@ -32,38 +33,23 @@ export default function NewParticipantsForm() {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { confirmPassword, prefectureOther, ...baseData } = data;
 
-      // 「その他」が選択されており、prefectureOtherに値がある場合は、そちらを使用
-      const submitData = {
+      // バックエンドのZodスキーマに合わせたデータを作成
+      const submitData: ParticipantCreateData = {
         ...baseData,
         prefecture:
           data.prefecture === "その他" && data.prefectureOther
             ? data.prefectureOther
-            : data.prefecture,
+            : data.prefecture || null,
+        displayName: data.displayName || null,
+        freeText: data.freeText || null,
+        isCancelled: false,
+        isAccepted: false,
       };
 
-      try {
-        const response = await (client as any).participants.$post({
-          json: submitData,
-        });
-        return await response.json();
-      } catch (error) {
-        // フォールバック処理
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
-        const response = await fetch(`${API_URL}/participants`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(submitData),
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(errorText);
-        }
-
-        return await response.json();
-      }
+      const response = await client.participants.$post({
+        json: submitData,
+      });
+      return await response.json();
     },
     onSuccess: () => {
       setState({
@@ -74,7 +60,7 @@ export default function NewParticipantsForm() {
       });
     },
     onError: (error: Error) => {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         errors: {
           ...prev.errors,
@@ -87,12 +73,12 @@ export default function NewParticipantsForm() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     // バリデーション
     const errors = validateParticipantForm(state.data);
 
     if (Object.keys(errors).length > 0) {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         errors,
         isSubmitting: false,
@@ -100,7 +86,7 @@ export default function NewParticipantsForm() {
       return;
     }
 
-    setState(prev => ({ ...prev, isSubmitting: true, errors: {} }));
+    setState((prev) => ({ ...prev, isSubmitting: true, errors: {} }));
     mutation.mutate(state.data);
   };
 
@@ -109,7 +95,7 @@ export default function NewParticipantsForm() {
     value: string,
   ) => {
     // フォームデータを更新
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       data: {
         ...prev.data,
@@ -125,7 +111,7 @@ export default function NewParticipantsForm() {
 
     // Clear field error if validation passes
     if (!fieldError && state.errors[field]) {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         errors: {
           ...prev.errors,
@@ -453,7 +439,9 @@ export default function NewParticipantsForm() {
                 : "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             }`}
           >
-            {state.isSubmitting || mutation.isPending ? "登録中..." : "参加者登録"}
+            {state.isSubmitting || mutation.isPending
+              ? "登録中..."
+              : "参加者登録"}
           </button>
         </div>
       </form>

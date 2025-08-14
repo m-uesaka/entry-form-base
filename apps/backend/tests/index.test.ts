@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import app from "../src";
+import app from "../src/index";
 
 // モックされた環境変数
 const mockEnv = {

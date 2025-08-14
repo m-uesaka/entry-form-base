@@ -4,7 +4,11 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { client } from "@/utils/client";
-import { type Participant, type UpdateParticipantFormData, PREFECTURES } from "@/types/form";
+import {
+  type Participant,
+  type UpdateParticipantFormData,
+  PREFECTURES,
+} from "@/types/form";
 
 export default function MyPage() {
   const router = useRouter();
@@ -25,7 +29,9 @@ export default function MyPage() {
   const [submitMessage, setSubmitMessage] = useState<string>("");
 
   const mutation = useMutation({
-    mutationFn: async (data: UpdateParticipantFormData & { participantId: number }) => {
+    mutationFn: async (
+      data: UpdateParticipantFormData & { participantId: string },
+    ) => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { participantId, prefectureOther, ...baseData } = data;
 
@@ -38,21 +44,34 @@ export default function MyPage() {
             : data.prefecture,
       };
 
+      const response = await client.participants[":id"].$put({
+        param: { id: data.participantId },
+        json: submitData,
+      });
+
       try {
-        const response = await (client as any).participants[participantId].$put({
-          json: submitData,
-        });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const response = await (client as any).participants[participantId].$put(
+          {
+            json: submitData,
+          },
+        );
         return await response.json();
       } catch (error) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         // フォールバック処理
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
-        const response = await fetch(`${API_URL}/participants/${participantId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
+        const API_URL =
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
+        const response = await fetch(
+          `${API_URL}/participants/${participantId}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(submitData),
           },
-          body: JSON.stringify(submitData),
-        });
+        );
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -88,7 +107,7 @@ export default function MyPage() {
 
     const parsedParticipant = JSON.parse(savedParticipant) as Participant;
     setParticipant(parsedParticipant);
-    
+
     // フォームデータを初期化
     setFormData({
       lastNameKanji: parsedParticipant.lastNameKanji,
@@ -114,14 +133,14 @@ export default function MyPage() {
     field: keyof UpdateParticipantFormData,
     value: string | boolean,
   ) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
 
     // エラーをクリア
     if (errors[field]) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
         [field]: "",
       }));
@@ -130,15 +149,19 @@ export default function MyPage() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     if (!participant) return;
 
     // バリデーション (簡易版)
     const newErrors: { [key: string]: string } = {};
-    if (!formData.lastNameKanji.trim()) newErrors.lastNameKanji = "名字（漢字）は必須です";
-    if (!formData.firstNameKanji.trim()) newErrors.firstNameKanji = "名前（漢字）は必須です";
-    if (!formData.lastNameKana.trim()) newErrors.lastNameKana = "名字（ふりがな）は必須です";
-    if (!formData.firstNameKana.trim()) newErrors.firstNameKana = "名前（ふりがな）は必須です";
+    if (!formData.lastNameKanji.trim())
+      newErrors.lastNameKanji = "名字（漢字）は必須です";
+    if (!formData.firstNameKanji.trim())
+      newErrors.firstNameKanji = "名前（漢字）は必須です";
+    if (!formData.lastNameKana.trim())
+      newErrors.lastNameKana = "名字（ふりがな）は必須です";
+    if (!formData.firstNameKana.trim())
+      newErrors.firstNameKana = "名前（ふりがな）は必須です";
     if (!formData.email.trim()) newErrors.email = "メールアドレスは必須です";
 
     if (Object.keys(newErrors).length > 0) {
@@ -165,7 +188,9 @@ export default function MyPage() {
         {/* ヘッダー */}
         <div className="bg-white shadow rounded-lg mb-8">
           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">参加者マイページ</h1>
+            <h1 className="text-2xl font-bold text-gray-900">
+              参加者マイページ
+            </h1>
             <button
               type="button"
               onClick={handleLogout}
@@ -176,10 +201,12 @@ export default function MyPage() {
           </div>
           <div className="px-6 py-4">
             <p className="text-gray-600">
-              参加者ID: <span className="font-mono font-semibold">{participant.id}</span>
+              参加者ID:{" "}
+              <span className="font-mono font-semibold">{participant.id}</span>
             </p>
             <p className="text-sm text-gray-500 mt-1">
-              登録日: {new Date(participant.createdAt).toLocaleDateString('ja-JP')}
+              登録日:{" "}
+              {new Date(participant.createdAt).toLocaleDateString("ja-JP")}
             </p>
           </div>
         </div>
@@ -187,22 +214,30 @@ export default function MyPage() {
         {/* フォーム */}
         <div className="bg-white shadow rounded-lg">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">参加者情報の変更</h2>
+            <h2 className="text-lg font-semibold text-gray-900">
+              参加者情報の変更
+            </h2>
           </div>
-          
+
           <form onSubmit={handleSubmit} className="px-6 py-6 space-y-6">
             {/* 参加者IDを隠しフィールドで送信 */}
             <input type="hidden" name="participantId" value={participant.id} />
-            
+
             {submitMessage && (
-              <div className={`p-4 rounded-md ${
-                submitMessage.includes("更新しました") 
-                  ? "bg-green-50 border border-green-200" 
-                  : "bg-red-50 border border-red-200"
-              }`}>
-                <p className={`text-sm ${
-                  submitMessage.includes("更新しました") ? "text-green-700" : "text-red-700"
-                }`}>
+              <div
+                className={`p-4 rounded-md ${
+                  submitMessage.includes("更新しました")
+                    ? "bg-green-50 border border-green-200"
+                    : "bg-red-50 border border-red-200"
+                }`}
+              >
+                <p
+                  className={`text-sm ${
+                    submitMessage.includes("更新しました")
+                      ? "text-green-700"
+                      : "text-red-700"
+                  }`}
+                >
                   {submitMessage}
                 </p>
               </div>
@@ -211,7 +246,10 @@ export default function MyPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* 名字（漢字） */}
               <div>
-                <label htmlFor="lastNameKanji" className="block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="lastNameKanji"
+                  className="block text-sm font-medium text-gray-700"
+                >
                   名字（漢字） <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -219,19 +257,26 @@ export default function MyPage() {
                   name="lastNameKanji"
                   id="lastNameKanji"
                   value={formData.lastNameKanji}
-                  onChange={(e) => handleInputChange("lastNameKanji", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("lastNameKanji", e.target.value)
+                  }
                   className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
                     errors.lastNameKanji ? "border-red-300" : "border-gray-300"
                   }`}
                 />
                 {errors.lastNameKanji && (
-                  <p className="mt-1 text-sm text-red-600">{errors.lastNameKanji}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.lastNameKanji}
+                  </p>
                 )}
               </div>
 
               {/* 名前（漢字） */}
               <div>
-                <label htmlFor="firstNameKanji" className="block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="firstNameKanji"
+                  className="block text-sm font-medium text-gray-700"
+                >
                   名前（漢字） <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -239,19 +284,26 @@ export default function MyPage() {
                   name="firstNameKanji"
                   id="firstNameKanji"
                   value={formData.firstNameKanji}
-                  onChange={(e) => handleInputChange("firstNameKanji", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("firstNameKanji", e.target.value)
+                  }
                   className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
                     errors.firstNameKanji ? "border-red-300" : "border-gray-300"
                   }`}
                 />
                 {errors.firstNameKanji && (
-                  <p className="mt-1 text-sm text-red-600">{errors.firstNameKanji}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.firstNameKanji}
+                  </p>
                 )}
               </div>
 
               {/* 名字（ふりがな） */}
               <div>
-                <label htmlFor="lastNameKana" className="block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="lastNameKana"
+                  className="block text-sm font-medium text-gray-700"
+                >
                   名字（ふりがな） <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -259,20 +311,27 @@ export default function MyPage() {
                   name="lastNameKana"
                   id="lastNameKana"
                   value={formData.lastNameKana}
-                  onChange={(e) => handleInputChange("lastNameKana", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("lastNameKana", e.target.value)
+                  }
                   className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
                     errors.lastNameKana ? "border-red-300" : "border-gray-300"
                   }`}
                   placeholder="やまだ"
                 />
                 {errors.lastNameKana && (
-                  <p className="mt-1 text-sm text-red-600">{errors.lastNameKana}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.lastNameKana}
+                  </p>
                 )}
               </div>
 
               {/* 名前（ふりがな） */}
               <div>
-                <label htmlFor="firstNameKana" className="block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="firstNameKana"
+                  className="block text-sm font-medium text-gray-700"
+                >
                   名前（ふりがな） <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -280,21 +339,28 @@ export default function MyPage() {
                   name="firstNameKana"
                   id="firstNameKana"
                   value={formData.firstNameKana}
-                  onChange={(e) => handleInputChange("firstNameKana", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("firstNameKana", e.target.value)
+                  }
                   className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
                     errors.firstNameKana ? "border-red-300" : "border-gray-300"
                   }`}
                   placeholder="たろう"
                 />
                 {errors.firstNameKana && (
-                  <p className="mt-1 text-sm text-red-600">{errors.firstNameKana}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.firstNameKana}
+                  </p>
                 )}
               </div>
             </div>
 
             {/* メールアドレス */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700"
+              >
                 メールアドレス <span className="text-red-500">*</span>
               </label>
               <input
@@ -315,7 +381,10 @@ export default function MyPage() {
 
             {/* 表示名 */}
             <div>
-              <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="displayName"
+                className="block text-sm font-medium text-gray-700"
+              >
                 表示名（任意）
               </label>
               <input
@@ -323,7 +392,9 @@ export default function MyPage() {
                 name="displayName"
                 id="displayName"
                 value={formData.displayName}
-                onChange={(e) => handleInputChange("displayName", e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("displayName", e.target.value)
+                }
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 placeholder="表示名を入力（空白の場合は氏名が表示されます）"
               />
@@ -331,14 +402,19 @@ export default function MyPage() {
 
             {/* 都道府県 */}
             <div>
-              <label htmlFor="prefecture" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="prefecture"
+                className="block text-sm font-medium text-gray-700"
+              >
                 お住まいの都道府県（任意）
               </label>
               <select
                 name="prefecture"
                 id="prefecture"
                 value={formData.prefecture}
-                onChange={(e) => handleInputChange("prefecture", e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("prefecture", e.target.value)
+                }
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               >
                 <option value="">選択してください</option>
@@ -352,7 +428,10 @@ export default function MyPage() {
 
             {/* その他の都道府県（条件付き表示は難しいので、常に表示し、サーバーサイドでバリデーション） */}
             <div>
-              <label htmlFor="prefectureOther" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="prefectureOther"
+                className="block text-sm font-medium text-gray-700"
+              >
                 具体的な都道府県名（「その他」を選択した場合のみ記入）
               </label>
               <input
@@ -360,20 +439,27 @@ export default function MyPage() {
                 name="prefectureOther"
                 id="prefectureOther"
                 value={formData.prefectureOther}
-                onChange={(e) => handleInputChange("prefectureOther", e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("prefectureOther", e.target.value)
+                }
                 className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
                   errors.prefectureOther ? "border-red-300" : "border-gray-300"
                 }`}
                 placeholder="都道府県名を入力してください"
               />
               {errors.prefectureOther && (
-                <p className="mt-1 text-sm text-red-600">{errors.prefectureOther}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.prefectureOther}
+                </p>
               )}
             </div>
 
             {/* 自由記入欄 */}
             <div>
-              <label htmlFor="freeText" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="freeText"
+                className="block text-sm font-medium text-gray-700"
+              >
                 自由記入欄（任意）
               </label>
               <textarea
@@ -396,12 +482,17 @@ export default function MyPage() {
                     name="isCancelled"
                     type="checkbox"
                     checked={formData.isCancelled}
-                    onChange={(e) => handleInputChange("isCancelled", e.target.checked)}
+                    onChange={(e) =>
+                      handleInputChange("isCancelled", e.target.checked)
+                    }
                     className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
                   />
                 </div>
                 <div className="ml-3 text-sm">
-                  <label htmlFor="isCancelled" className="font-medium text-red-700">
+                  <label
+                    htmlFor="isCancelled"
+                    className="font-medium text-red-700"
+                  >
                     参加をキャンセルしますか？
                   </label>
                   <p className="text-red-600">

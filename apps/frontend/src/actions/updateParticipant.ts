@@ -1,18 +1,24 @@
 "use server";
 
-import { type UpdateParticipantFormData, type MyPageFormState } from "@/types/form";
+import {
+  type UpdateParticipantFormData,
+  type MyPageFormState,
+} from "@/types/form";
 import { validateField } from "@/utils/validation";
 import { client } from "@/utils/client";
 
 // API呼び出し用のヘルパー関数
-async function callUpdateAPI(participantId: number, updateData: UpdateParticipantFormData) {
+async function callUpdateAPI(
+  participantId: number,
+  updateData: UpdateParticipantFormData,
+) {
   try {
     // Honoクライアントを使用してデータを更新
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const response = await (client as any).participants[participantId].$put({
-      json: updateData
+      json: updateData,
     });
-    
+
     if (!response.ok) {
       throw new Error("参加者データの更新に失敗しました");
     }
@@ -28,7 +34,7 @@ async function callUpdateAPI(participantId: number, updateData: UpdateParticipan
       },
       body: JSON.stringify(updateData),
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -40,7 +46,7 @@ async function callUpdateAPI(participantId: number, updateData: UpdateParticipan
 
 export async function updateParticipantAction(
   prevState: MyPageFormState,
-  formData: FormData
+  formData: FormData,
 ): Promise<MyPageFormState> {
   try {
     // フォームデータを取得
@@ -64,7 +70,10 @@ export async function updateParticipantAction(
       firstNameKana: firstNameKana || "",
       email: email || "",
       displayName: displayName || "",
-      prefecture: prefecture === "その他" ? (prefectureOther?.trim() || "その他") : prefecture,
+      prefecture:
+        prefecture === "その他"
+          ? prefectureOther?.trim() || "その他"
+          : prefecture,
       prefectureOther: "",
       freeText: freeText || "",
       isCancelled,
@@ -74,8 +83,14 @@ export async function updateParticipantAction(
     const errors: { [key: string]: string } = {};
 
     // 必須フィールドのバリデーション
-    const requiredFields = ['lastNameKanji', 'firstNameKanji', 'lastNameKana', 'firstNameKana', 'email'] as const;
-    
+    const requiredFields = [
+      "lastNameKanji",
+      "firstNameKanji",
+      "lastNameKana",
+      "firstNameKana",
+      "email",
+    ] as const;
+
     for (const field of requiredFields) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const error = validateField(field, updateData[field], updateData as any);
@@ -121,7 +136,8 @@ export async function updateParticipantAction(
       data: prevState.data,
       isSubmitting: false,
       errors: {},
-      submitMessage: "更新に失敗しました。しばらく経ってから再度お試しください。",
+      submitMessage:
+        "更新に失敗しました。しばらく経ってから再度お試しください。",
       participant: prevState.participant,
     };
   }

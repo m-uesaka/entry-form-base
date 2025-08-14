@@ -19,15 +19,6 @@ import {
   type Variables,
 } from "./middleware";
 
-const app = new Hono<{ Bindings: Env }>();
-
-app.use(
-  "*",
-  cors({
-    origin: "*",
-  }),
-);
-
 const participantSchema = z.object({
   email: z.email(),
   lastNameKanji: z.string().min(1),
@@ -47,98 +38,9 @@ const staffSchema = z.object({
   password: z.string().min(10),
 });
 
-const route = app
-  .get("/", (c) => {
-    return c.text("Hello Hono!");
-  })
-  .get("/participants", dbMiddleware, sanitizeMiddleware, async (c) => {
-    const db = c.get("db");
-    const sanitizeParticipants = c.get("sanitizeParticipants");
-
-    const participants = await db.select().from(participantsTable);
-    if (!participants) {
-      return c.text("Failed to fetch participants", 500);
-    }
-
-    const safeParticipants = sanitizeParticipants(participants);
-    return c.json({ participants: safeParticipants });
-  })
-  .get("/participants/:id", dbMiddleware, sanitizeMiddleware, async (c) => {
-    const db = c.get("db");
-    const sanitizeParticipant = c.get("sanitizeParticipant");
-
-    const id = parseInt(c.req.param("id"));
-    if (isNaN(id)) {
-      return c.json({ error: "Invalid ID" }, 400);
-    }
-    const participants = await db
-      .select()
-      .from(participantsTable)
-      .where(eq(participantsTable.id, id));
-    if (participants.length === 0) {
-      return c.json({ error: "Participant not found" }, 404);
-    }
-
-    const participant: ParticipantSelect = participants[0];
-    const safeParticipant = sanitizeParticipant(participant);
-    return c.json(safeParticipant);
-  })
-  .post(
-    "/participants",
-    dbMiddleware,
-    zValidator("json", participantSchema, (result, c) => {
-      if (!result.success) {
-        return c.text(result.error.issues[0].message, 400);
-      }
-    }),
-    async (c) => {
-      const db = c.get("db");
-      const data = c.req.valid("json");
-
-      // パスワードをハッシュ化（必須なのでnullチェック不要）
-      const participantData: ParticipantInsert = {
-        ...data,
-        passwordHash: await bcrypt.hash(data.password, 10),
-      };
-
-      // passwordフィールドを削除（データベースには保存しない）
-      delete (participantData as any).password;
-
-      const participant = await db
-        .insert(participantsTable)
-        .values(participantData);
-      return c.json({ participant: participant[0] });
-    },
-  )
-  .put("/participants/:id", dbMiddleware, sanitizeMiddleware, async (c) => {
-    const db = c.get("db");
-    const sanitizeParticipant = c.get("sanitizeParticipant");
-
-    const id = parseInt(c.req.param("id"));
-    if (isNaN(id)) {
-      return c.json({ error: "Invalid ID" }, 400);
-    }
-    const body = (await c.req.json()) as Partial<ParticipantInsert>;
-
-    const updatedParticipant = await db
-      .update(participantsTable)
-      .set({
-        ...body,
-        updatedAt: new Date(),
-      })
-      .where(eq(participantsTable.id, id))
-      .returning();
-
-    if (updatedParticipant.length === 0) {
-      return c.json({ error: "Participant not found" }, 404);
-    }
-
-    const updatedData: ParticipantSelect = updatedParticipant[0];
-    const safeUpdatedData = sanitizeParticipant(updatedData);
-
-    return c.json(safeUpdatedData);
-  })
-  .get("/staff", dbMiddleware, async (c) => {
+// スタッフ向けアプリ
+const staff = new Hono<{ Bindings: Env; Variables: Variables }>()
+  .get("/", dbMiddleware, async (c) => {
     const db = c.get("db");
     const staff = await db
       .select({
@@ -151,10 +53,10 @@ const route = app
     if (!staff) {
       return c.text("Failed to fetch staff", 500);
     }
-    return c.json({ staff });
+    return c.json({ staff }, 200);
   })
   .post(
-    "/staff",
+    "/",
     dbMiddleware,
     zValidator("json", staffSchema, (result, c) => {
       if (!result.success) {
@@ -182,7 +84,7 @@ const route = app
             user: staffTable.user,
             createdAt: staffTable.createdAt,
           });
-        return c.json({ staff: newStaff[0] });
+        return c.json({ staff: newStaff[0] }, 200);
       } catch (error) {
         if ((error as any).code === "23505") {
           // unique constraint violation
@@ -192,7 +94,7 @@ const route = app
       }
     },
   )
-  .post("/staff/login", dbMiddleware, sanitizeMiddleware, async (c) => {
+  .post("/login", dbMiddleware, sanitizeMiddleware, async (c) => {
     const db = c.get("db");
     const sanitizeStaff = c.get("sanitizeStaff");
     const { user, password } = await c.req.json();
@@ -233,9 +135,99 @@ const route = app
         ...safeStaffData,
         accessedAt: new Date(),
       },
-    });
+    }, 200);
+  });
+
+// 参加者向けアプリ
+const participants = new Hono<{ Bindings: Env; Variables: Variables }>()
+  .get("/", dbMiddleware, sanitizeMiddleware, async (c) => {
+    const db = c.get("db");
+    const sanitizeParticipants = c.get("sanitizeParticipants");
+
+    const participants = await db.select().from(participantsTable);
+    if (!participants) {
+      return c.text("Failed to fetch participants", 500);
+    }
+
+    const safeParticipants = sanitizeParticipants(participants);
+    return c.json({ participants: safeParticipants }, 200);
   })
-  .post("/participants/login", dbMiddleware, sanitizeMiddleware, async (c) => {
+  .get("/:id", dbMiddleware, sanitizeMiddleware, async (c) => {
+    const db = c.get("db");
+    const sanitizeParticipant = c.get("sanitizeParticipant");
+
+    const id = parseInt(c.req.param("id"));
+    if (isNaN(id)) {
+      return c.json({ error: "Invalid ID" }, 400);
+    }
+    const participants = await db
+      .select()
+      .from(participantsTable)
+      .where(eq(participantsTable.id, id));
+    if (participants.length === 0) {
+      return c.json({ error: "Participant not found" }, 404);
+    }
+
+    const participant: ParticipantSelect = participants[0];
+    const safeParticipant = sanitizeParticipant(participant);
+    return c.json(safeParticipant, 200);
+  })
+  .post(
+    "/",
+    dbMiddleware,
+    zValidator("json", participantSchema, (result, c) => {
+      if (!result.success) {
+        return c.text(result.error.issues[0].message, 400);
+      }
+    }),
+    async (c) => {
+      const db = c.get("db");
+      const data = c.req.valid("json");
+
+      // パスワードをハッシュ化（必須なのでnullチェック不要）
+      const participantData: ParticipantInsert = {
+        ...data,
+        passwordHash: await bcrypt.hash(data.password, 10),
+      };
+
+      // passwordフィールドを削除（データベースには保存しない）
+      delete (participantData as any).password;
+
+      const participant = await db
+        .insert(participantsTable)
+        .values(participantData);
+      return c.json({ participant: participant[0] }, 200);
+    },
+  )
+  .put("/:id", dbMiddleware, sanitizeMiddleware, async (c) => {
+    const db = c.get("db");
+    const sanitizeParticipant = c.get("sanitizeParticipant");
+
+    const id = parseInt(c.req.param("id"));
+    if (isNaN(id)) {
+      return c.json({ error: "Invalid ID" }, 400);
+    }
+    const body = (await c.req.json()) as Partial<ParticipantInsert>;
+
+    const updatedParticipant = await db
+      .update(participantsTable)
+      .set({
+        ...body,
+        updatedAt: new Date(),
+      })
+      .where(eq(participantsTable.id, id))
+      .returning();
+
+    if (updatedParticipant.length === 0) {
+      return c.json({ error: "Participant not found" }, 404);
+    }
+
+    const updatedData: ParticipantSelect = updatedParticipant[0];
+    const safeUpdatedData = sanitizeParticipant(updatedData);
+
+    return c.json(safeUpdatedData, 200);
+  })
+  .post("/login", dbMiddleware, sanitizeMiddleware, async (c) => {
     const db = c.get("db");
     const sanitizeParticipant = c.get("sanitizeParticipant");
     const { email, password } = await c.req.json();
@@ -268,9 +260,22 @@ const route = app
     return c.json({
       message: "Login successful",
       participant: safeParticipantData,
-    });
+    }, 200);
   });
 
-export type AppType = typeof route;
+const app = new Hono<{ Bindings: Env; Variables: Variables }>()
+  .use(
+    "*",
+    cors({
+      origin: "*",
+    }),
+  )
+  .get("/", (c) => {
+    return c.text("Hello Hono!", 200);
+  })
+  .route("/staff", staff)
+  .route("/participants", participants);
 
+export type AppType = typeof app;
+export type ParticipantCreateData = z.infer<typeof participantSchema>;
 export default app;

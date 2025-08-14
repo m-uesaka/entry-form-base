@@ -2,8 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { type LoginFormData } from "@/types/form";
+import { type LoginFormData, Participant } from "@/types/form";
 import { validateEmail } from "@/utils/validation";
+import { client } from "@/utils/client";
+import { InferResponseType } from "hono";
+type SuccessResponseType = InferResponseType<typeof client.participants.login.$post, 200>;
+type BadRequestErrorResponseType = InferResponseType<typeof client.participants.login.$post, 400>;
+type UnauthorizedErrorResponseType = InferResponseType<typeof client.participants.login.$post, 401>;
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,7 +24,7 @@ export default function LoginPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    
+
     // エラーをクリア
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
@@ -47,7 +52,7 @@ export default function LoginPage() {
   // フォーム送信ハンドラー
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -55,30 +60,27 @@ export default function LoginPage() {
     setIsSubmitting(true);
     setMessage("");
 
-    try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
-      const response = await fetch(`${API_URL}/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
+    const response = await client.participants.login.$post({
+      json: formData,
+    });
 
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        // ログイン成功時、参加者情報をローカルストレージに保存
-        localStorage.setItem("participant", JSON.stringify(result.participant));
-        router.push("/mypage");
-      } else {
-        setMessage(result.message || "ログインに失敗しました");
-      }
-    } catch (error) {
-      console.error("Login error:", error);
-      setMessage("ログインに失敗しました。しばらく経ってから再度お試しください。");
-    } finally {
-      setIsSubmitting(false);
+    if (response.ok) {
+      // ログイン成功時、参加者情報をローカルストレージに保存
+      const result: SuccessResponseType = await response.json();
+      localStorage.setItem("participant", JSON.stringify(result.participant));
+      router.push("/mypage");
+    }
+    switch (response.status) {
+      case 401:
+        const unauthorizedErrorResult: UnauthorizedErrorResponseType = await response.json();
+        setMessage(unauthorizedErrorResult.error || "ログインに失敗しました");
+        break;
+      case 400:
+        const badRequestErrorResult: BadRequestErrorResponseType = await response.json();
+        setMessage(badRequestErrorResult.error || "サーバーエラーが発生しました");
+        break;
+      default:
+        setMessage("不明なエラーが発生しました。しばらく経ってから再度お試しください。");
     }
   };
 
@@ -103,7 +105,10 @@ export default function LoginPage() {
 
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700"
+              >
                 メールアドレス
               </label>
               <div className="mt-1">
@@ -127,7 +132,10 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700"
+              >
                 パスワード
               </label>
               <div className="mt-1">
