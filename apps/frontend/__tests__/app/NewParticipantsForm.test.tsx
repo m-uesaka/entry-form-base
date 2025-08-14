@@ -18,7 +18,7 @@ describe("NewParticipantsForm", () => {
       );
       const content = fs.readFileSync(formPath, "utf-8");
 
-      expect(content).toContain("'use client'");
+      expect(content).toContain("use client");
     });
 
     it("useActionStateが使用されていること", async () => {

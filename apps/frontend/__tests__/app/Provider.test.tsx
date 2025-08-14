@@ -63,7 +63,7 @@ describe("Provider", () => {
       const providerPath = path.join(__dirname, "../../src/app/Provider.tsx");
       const content = fs.readFileSync(providerPath, "utf-8");
 
-      expect(content).toContain("'use client'");
+      expect(content).toContain("use client");
     });
   });
 });

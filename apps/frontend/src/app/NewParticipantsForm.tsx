@@ -13,6 +13,7 @@ const initialState: FormState = {
     email: "",
     displayName: "",
     prefecture: "",
+    prefectureOther: "",
     freeText: "",
     password: "",
     confirmPassword: "",
@@ -33,6 +34,7 @@ async function submitParticipantForm(
     email: (formData.get("email") as string) || "",
     displayName: (formData.get("displayName") as string) || "",
     prefecture: (formData.get("prefecture") as string) || "",
+    prefectureOther: (formData.get("prefectureOther") as string) || "",
     freeText: (formData.get("freeText") as string) || "",
     password: (formData.get("password") as string) || "",
     confirmPassword: (formData.get("confirmPassword") as string) || "",
@@ -52,7 +54,16 @@ async function submitParticipantForm(
   try {
     // API call
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
-    const { confirmPassword, ...submitData } = data;
+    const { confirmPassword, prefectureOther, ...baseData } = data;
+
+    // 「その他」が選択されており、prefectureOtherに値がある場合は、そちらを使用
+    const submitData = {
+      ...baseData,
+      prefecture:
+        data.prefecture === "その他" && data.prefectureOther
+          ? data.prefectureOther
+          : data.prefecture,
+    };
 
     const response = await fetch(`${API_URL}/participants`, {
       method: "POST",
@@ -280,7 +291,7 @@ export default function NewParticipantsForm() {
             placeholder="タロウ"
           />
           <p className="mt-1 text-sm text-gray-500">
-            空欄の場合は名前（漢字）が使用されます
+            空欄の場合はフルネームが使用されます
           </p>
         </div>
 
@@ -305,6 +316,27 @@ export default function NewParticipantsForm() {
               </option>
             ))}
           </select>
+        </div>
+
+        {/* Prefecture Other field - always shown */}
+        <div>
+          <label
+            htmlFor="prefectureOther"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            （上で「その他」を選ばれた方）差し支えなければ、具体的な在住地をお書きください。
+          </label>
+          <input
+            type="text"
+            id="prefectureOther"
+            name="prefectureOther"
+            defaultValue={state.data.prefectureOther}
+            onChange={(e) =>
+              handleInputChange("prefectureOther", e.target.value)
+            }
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="例: 海外、日本国外など"
+          />
         </div>
 
         {/* Free text field */}
@@ -333,7 +365,7 @@ export default function NewParticipantsForm() {
               htmlFor="password"
               className="block text-sm font-medium text-gray-700 mb-1"
             >
-              パスワード <span className="text-red-500">*</span>
+              パスワード （10文字以上）<span className="text-red-500">*</span>
             </label>
             <input
               type="password"

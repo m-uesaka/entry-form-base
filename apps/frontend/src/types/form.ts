@@ -7,6 +7,7 @@ export interface NewParticipantFormData {
   email: string;
   displayName?: string;
   prefecture?: string;
+  prefectureOther?: string;
   freeText?: string;
   password: string;
   confirmPassword: string;
