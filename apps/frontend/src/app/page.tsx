@@ -12,11 +12,11 @@ export default function Home() {
             こちらから新規参加者の登録を行うことができます
           </p>
         </header>
-        
+
         <main>
           <NewParticipantsForm />
         </main>
-        
+
         <footer className="text-center mt-12 text-gray-500 text-sm">
           <p>© 2025 Event Registration System</p>
         </footer>
